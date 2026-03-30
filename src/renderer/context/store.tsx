@@ -6,8 +6,9 @@ import {
   useCallback,
   type ReactNode,
 } from 'react'
-import type { SupportEntry, FieldsConfig, ThemeMode, BrandingConfig } from 'shared/types'
-import { DEFAULT_FIELDS, DEFAULT_BRANDING, STORE_KEYS } from 'shared/constants'
+import type { SupportEntry, FieldsConfig, ThemeMode, BrandingConfig, SharedDbConfig } from 'shared/types'
+import { DEFAULT_FIELDS, DEFAULT_BRANDING, DEFAULT_SHARED_DB, STORE_KEYS } from 'shared/constants'
+import { fetchRemoteEntries, pushEntry, deleteRemoteEntry, resetClient } from 'renderer/lib/supabase'
 
 const { App } = window
 
@@ -17,12 +18,15 @@ interface StoreContextValue {
   theme: ThemeMode
   resolvedTheme: 'light' | 'dark'
   branding: BrandingConfig
+  sharedDb: SharedDbConfig
   addEntry: (entry: Omit<SupportEntry, 'id'>) => Promise<void>
   deleteEntry: (id: number) => Promise<void>
   updateFields: (fields: FieldsConfig) => Promise<void>
   resetFields: () => Promise<void>
   setTheme: (mode: ThemeMode) => Promise<void>
   setBranding: (branding: BrandingConfig) => Promise<void>
+  setSharedDb: (config: SharedDbConfig) => Promise<void>
+  refreshFromRemote: () => Promise<void>
   clearAllData: () => Promise<void>
 }
 
@@ -34,21 +38,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>('auto')
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light')
   const [branding, setBrandingState] = useState<BrandingConfig>(DEFAULT_BRANDING)
+  const [sharedDb, setSharedDbState] = useState<SharedDbConfig>(DEFAULT_SHARED_DB)
 
   useEffect(() => {
     async function load() {
+      // Load local data
+      let localData: SupportEntry[] = []
       const storedData = await App.getData(STORE_KEYS.DATA)
-      if (Array.isArray(storedData)) setData(storedData)
+      if (Array.isArray(storedData)) localData = storedData
 
-      // Migration: check old key too
-      if (!Array.isArray(storedData) || storedData.length === 0) {
+      // Migration from old keys
+      if (localData.length === 0) {
         const oldData = await App.getData('gc_support_v1')
         if (Array.isArray(oldData) && oldData.length > 0) {
-          setData(oldData)
+          localData = oldData
           await App.setData(STORE_KEYS.DATA, oldData)
         }
       }
 
+      setData(localData)
+
+      // Fields
       const storedFields = await App.getData(STORE_KEYS.SETTINGS)
       if (storedFields && typeof storedFields === 'object' && !Array.isArray(storedFields) && Object.keys(storedFields).length > 0) {
         setFields(storedFields as FieldsConfig)
@@ -60,6 +70,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Theme
       const storedTheme = await App.getData(STORE_KEYS.THEME) as ThemeMode
       if (storedTheme && ['light', 'dark', 'auto'].includes(storedTheme)) {
         setThemeState(storedTheme)
@@ -68,9 +79,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         applyTheme('auto')
       }
 
+      // Branding
       const storedBranding = await App.getData(STORE_KEYS.BRANDING) as BrandingConfig
       if (storedBranding && storedBranding.orgName) {
         setBrandingState(storedBranding)
+      }
+
+      // Shared DB
+      const storedSharedDb = await App.getData(STORE_KEYS.SHARED_DB) as SharedDbConfig
+      if (storedSharedDb && typeof storedSharedDb === 'object') {
+        setSharedDbState(storedSharedDb)
+
+        // If shared DB is enabled, fetch remote data
+        if (storedSharedDb.enabled && storedSharedDb.url && storedSharedDb.key) {
+          try {
+            const remoteData = await fetchRemoteEntries(storedSharedDb)
+            if (remoteData.length > 0) {
+              // Merge: remote wins for same ID, keep local-only entries
+              const remoteIds = new Set(remoteData.map((d) => d.id))
+              const localOnly = localData.filter((d) => !remoteIds.has(d.id))
+              const merged = [...remoteData, ...localOnly].sort(
+                (a, b) => (b.dato as string).localeCompare(a.dato as string)
+              )
+              setData(merged)
+              await App.setData(STORE_KEYS.DATA, merged)
+            }
+          } catch (e) {
+            console.error('Failed to sync from remote:', e)
+          }
+        }
       }
     }
     load()
@@ -105,7 +142,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       App.setData(STORE_KEYS.DATA, next)
       return next
     })
-  }, [])
+
+    // Push to remote if enabled
+    if (sharedDb.enabled) {
+      pushEntry(sharedDb, newEntry).catch(console.error)
+    }
+  }, [sharedDb])
 
   const deleteEntry = useCallback(async (id: number) => {
     setData((prev) => {
@@ -113,7 +155,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       App.setData(STORE_KEYS.DATA, next)
       return next
     })
-  }, [])
+
+    if (sharedDb.enabled) {
+      deleteRemoteEntry(sharedDb, id).catch(console.error)
+    }
+  }, [sharedDb])
 
   const updateFields = useCallback(async (newFields: FieldsConfig) => {
     setFields(newFields)
@@ -137,6 +183,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await App.setData(STORE_KEYS.BRANDING, b)
   }, [])
 
+  const setSharedDb = useCallback(async (config: SharedDbConfig) => {
+    setSharedDbState(config)
+    await App.setData(STORE_KEYS.SHARED_DB, config)
+    if (!config.enabled) resetClient()
+  }, [])
+
+  const refreshFromRemote = useCallback(async () => {
+    if (!sharedDb.enabled) return
+    const remoteData = await fetchRemoteEntries(sharedDb)
+    if (remoteData.length > 0) {
+      setData((prev) => {
+        const remoteIds = new Set(remoteData.map((d) => d.id))
+        const localOnly = prev.filter((d) => !remoteIds.has(d.id))
+        const merged = [...remoteData, ...localOnly].sort(
+          (a, b) => (b.dato as string).localeCompare(a.dato as string)
+        )
+        App.setData(STORE_KEYS.DATA, merged)
+        return merged
+      })
+    }
+  }, [sharedDb])
+
   const clearAllData = useCallback(async () => {
     setData([])
     await App.setData(STORE_KEYS.DATA, [])
@@ -150,12 +218,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         theme,
         resolvedTheme,
         branding,
+        sharedDb,
         addEntry,
         deleteEntry,
         updateFields,
         resetFields,
         setTheme,
         setBranding,
+        setSharedDb,
+        refreshFromRemote,
         clearAllData,
       }}
     >

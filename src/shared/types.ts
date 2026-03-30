@@ -42,3 +42,9 @@ export interface BrandingConfig {
   orgName: string
   subtitle: string
 }
+
+export interface SharedDbConfig {
+  enabled: boolean
+  url: string
+  key: string
+}

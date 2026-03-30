@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from 'renderer/components/ui/card'
 import { Button } from 'renderer/components/ui/button'
 import { Input } from 'renderer/components/ui/input'
@@ -14,10 +14,11 @@ import { Badge } from 'renderer/components/ui/badge'
 import { Separator } from 'renderer/components/ui/separator'
 import { useStore } from 'renderer/context/store'
 import { toast } from 'sonner'
-import { Plus, X, RotateCcw, Download, Trash2, Sun, Moon, Monitor, ArrowUp, ArrowDown, Copy, Check, Bot } from 'lucide-react'
+import { testConnection as testConnectionFn, syncToRemote as syncToRemoteFn } from 'renderer/lib/supabase'
+import { Plus, X, RotateCcw, Download, Trash2, Sun, Moon, Monitor, ArrowUp, ArrowDown, Copy, Check, Bot, Database, RefreshCw, Wifi, WifiOff, Loader2 } from 'lucide-react'
 
 export function SettingsView() {
-  const { fields, updateFields, resetFields, data, clearAllData, theme, setTheme, branding, setBranding } = useStore()
+  const { fields, updateFields, resetFields, data, clearAllData, theme, setTheme, branding, setBranding, sharedDb, setSharedDb, refreshFromRemote } = useStore()
   const [newFieldKey, setNewFieldKey] = useState('')
   const [newFieldLabel, setNewFieldLabel] = useState('')
   const [newFieldType, setNewFieldType] = useState<'select' | 'text' | 'textarea'>('select')
@@ -197,6 +198,14 @@ export function SettingsView() {
         </CardContent>
       </Card>
 
+      {/* Shared Database */}
+      <SharedDbSection
+        config={sharedDb}
+        onConfigChange={setSharedDb}
+        onSync={refreshFromRemote}
+        entryCount={data.length}
+      />
+
       {/* Fields */}
       <Card>
         <CardHeader className="pb-3">
@@ -375,6 +384,181 @@ export function SettingsView() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+function SharedDbSection({
+  config,
+  onConfigChange,
+  onSync,
+  entryCount,
+}: {
+  config: { enabled: boolean; url: string; key: string }
+  onConfigChange: (config: { enabled: boolean; url: string; key: string }) => void
+  onSync: () => Promise<void>
+  entryCount: number
+}) {
+  const [testing, setTesting] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null)
+  const [localUrl, setLocalUrl] = useState(config.url)
+  const [localKey, setLocalKey] = useState(config.key)
+
+  // Keep local state in sync when config changes externally
+  useEffect(() => {
+    setLocalUrl(config.url)
+    setLocalKey(config.key)
+  }, [config.url, config.key])
+
+  async function handleTest() {
+    setTesting(true)
+    setTestResult(null)
+    const result = await testConnectionFn({ enabled: true, url: localUrl, key: localKey })
+    setTestResult(result)
+    setTesting(false)
+
+    if (result.ok) {
+      toast.success('Forbindelse OK!')
+    } else {
+      toast.error(result.error || 'Forbindelse fejlede')
+    }
+  }
+
+  async function handleSave() {
+    const newConfig = { enabled: true, url: localUrl, key: localKey }
+    await onConfigChange(newConfig)
+    toast.success('Database gemt og aktiveret')
+  }
+
+  async function handleDisable() {
+    await onConfigChange({ enabled: false, url: localUrl, key: localKey })
+    setTestResult(null)
+    toast.success('Delt database deaktiveret — bruger kun lokal data')
+  }
+
+  async function handleSync() {
+    setSyncing(true)
+    try {
+      // Push local to remote first
+      await syncToRemoteFn({ enabled: true, url: localUrl, key: localKey }, [])
+      await onSync()
+      toast.success('Synkroniseret!')
+    } catch (e: any) {
+      toast.error('Synk fejlede: ' + (e.message || 'Ukendt fejl'))
+    }
+    setSyncing(false)
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <Database className="size-4 text-primary" />
+          <CardTitle className="text-sm">Delt database</CardTitle>
+          {config.enabled ? (
+            <Badge variant="default" className="text-[10px] ml-auto">
+              <Wifi className="size-2.5 mr-1" /> Online
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="text-[10px] ml-auto">
+              <WifiOff className="size-2.5 mr-1" /> Kun lokal
+            </Badge>
+          )}
+        </div>
+        <CardDescription>
+          Forbind til en Supabase-database for at dele data på tværs af teamet. Valgfrit — appen virker offline uden.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Supabase URL</Label>
+            <Input
+              value={localUrl}
+              onChange={(e) => setLocalUrl(e.target.value)}
+              placeholder="https://xxxxx.supabase.co"
+              className="h-8 text-sm font-mono"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Anon Key</Label>
+            <Input
+              value={localKey}
+              onChange={(e) => setLocalKey(e.target.value)}
+              placeholder="eyJhbGciOi..."
+              type="password"
+              className="h-8 text-sm font-mono"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleTest}
+            disabled={testing || !localUrl || !localKey}
+          >
+            {testing ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <Database className="size-3.5 mr-1.5" />}
+            Test forbindelse
+          </Button>
+
+          {!config.enabled ? (
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={!localUrl || !localKey || (testResult !== null && !testResult.ok)}
+            >
+              <Wifi className="size-3.5 mr-1.5" />
+              Aktivér delt database
+            </Button>
+          ) : (
+            <>
+              <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing}>
+                {syncing ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="size-3.5 mr-1.5" />}
+                Synkronisér nu
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleDisable}>
+                <WifiOff className="size-3.5 mr-1.5" />
+                Deaktivér
+              </Button>
+            </>
+          )}
+        </div>
+
+        {testResult && (
+          <div className={`text-xs p-2 rounded-md ${testResult.ok ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'}`}>
+            {testResult.ok ? '✓ Forbindelse OK — klar til brug' : `✗ ${testResult.error}`}
+          </div>
+        )}
+
+        {/* SQL setup instructions */}
+        <details className="group">
+          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+            Opsætning: SQL til Supabase →
+          </summary>
+          <pre className="mt-2 bg-muted rounded-lg p-3 text-[10px] leading-relaxed overflow-x-auto select-text whitespace-pre">{`-- Kør dette i Supabase SQL Editor
+create table if not exists entries (
+  id bigint primary key,
+  dato text not null,
+  kanal text,
+  brugertype text,
+  kategori text,
+  tid text,
+  losning text,
+  forebyg text,
+  fond text,
+  note text,
+  created_at timestamptz default now()
+);
+
+alter table entries enable row level security;
+
+create policy "Allow all" on entries
+  for all using (true) with check (true);`}</pre>
+        </details>
+      </CardContent>
+    </Card>
   )
 }
 

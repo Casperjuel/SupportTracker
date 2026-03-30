@@ -15,11 +15,18 @@ export const STORE_KEYS = {
   SETTINGS: 'st_fields_v1',
   THEME: 'st_theme',
   BRANDING: 'st_branding',
+  SHARED_DB: 'st_shared_db',
 } as const
 
 export const DEFAULT_BRANDING = {
   orgName: 'SupportTracker',
   subtitle: 'Supporttracker',
+}
+
+export const DEFAULT_SHARED_DB = {
+  enabled: false,
+  url: '',
+  key: '',
 }
 
 export const DEFAULT_FIELDS: FieldsConfig = {
