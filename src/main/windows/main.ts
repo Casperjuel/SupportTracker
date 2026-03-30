@@ -27,12 +27,13 @@ export async function MainWindow() {
   })
 
   // Retry loading if dev server isn't ready yet
-  window.webContents.on('did-fail-load', (_event, errorCode, _errorDesc, validatedURL) => {
-    if (ENVIRONMENT.IS_DEV && errorCode === -102) {
-      // ERR_CONNECTION_REFUSED — dev server not ready, retry
+  window.webContents.on('did-fail-load', (_event, errorCode) => {
+    if (ENVIRONMENT.IS_DEV) {
+      // Dev server not ready yet — retry after a short delay
+      // -102 = ERR_CONNECTION_REFUSED, -6 = ERR_FILE_NOT_FOUND, -3 = ERR_ABORTED
       setTimeout(() => {
         window.webContents.reload()
-      }, 1000)
+      }, 1500)
     }
   })
 
