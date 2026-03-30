@@ -8,7 +8,7 @@ import {
 } from 'react'
 import type { SupportEntry, FieldsConfig, ThemeMode, BrandingConfig, SharedDbConfig } from 'shared/types'
 import { DEFAULT_FIELDS, DEFAULT_BRANDING, DEFAULT_SHARED_DB, STORE_KEYS } from 'shared/constants'
-import { fetchRemoteEntries, pushEntry, deleteRemoteEntry, resetClient } from 'renderer/lib/supabase'
+import { fetchRemoteEntries, pushEntry, deleteRemoteEntry, resetClient, fetchRemoteFields, pushFields, subscribeToEntries, subscribeToConfig } from 'renderer/lib/supabase'
 
 const { App } = window
 
@@ -104,9 +104,43 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               setData(merged)
               await App.setData(STORE_KEYS.DATA, merged)
             }
+
+            // Sync fields from remote (remote wins)
+            const remoteFields = await fetchRemoteFields(storedSharedDb)
+            if (remoteFields && Object.keys(remoteFields).length > 0) {
+              setFields(remoteFields as FieldsConfig)
+              await App.setData(STORE_KEYS.SETTINGS, remoteFields)
+            }
           } catch (e) {
             console.error('Failed to sync from remote:', e)
           }
+
+          // Subscribe to realtime changes
+          subscribeToEntries(
+            storedSharedDb,
+            (newEntry) => {
+              setData((prev) => {
+                if (prev.some((d) => d.id === newEntry.id)) return prev
+                const next = [newEntry, ...prev].sort(
+                  (a, b) => (b.dato as string).localeCompare(a.dato as string)
+                )
+                App.setData(STORE_KEYS.DATA, next)
+                return next
+              })
+            },
+            (deletedId) => {
+              setData((prev) => {
+                const next = prev.filter((d) => d.id !== deletedId)
+                App.setData(STORE_KEYS.DATA, next)
+                return next
+              })
+            },
+          )
+
+          subscribeToConfig(storedSharedDb, (remoteFields) => {
+            setFields(remoteFields as FieldsConfig)
+            App.setData(STORE_KEYS.SETTINGS, remoteFields)
+          })
         }
       }
     }
@@ -164,7 +198,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const updateFields = useCallback(async (newFields: FieldsConfig) => {
     setFields(newFields)
     await App.setData(STORE_KEYS.SETTINGS, newFields)
-  }, [])
+    if (sharedDb.enabled) {
+      pushFields(sharedDb, newFields).catch(console.error)
+    }
+  }, [sharedDb])
 
   const resetFields = useCallback(async () => {
     const fresh = JSON.parse(JSON.stringify(DEFAULT_FIELDS))

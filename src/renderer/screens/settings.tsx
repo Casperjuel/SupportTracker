@@ -552,10 +552,23 @@ create table if not exists entries (
   created_at timestamptz default now()
 );
 
+create table if not exists config (
+  key text primary key,
+  value jsonb not null,
+  updated_at timestamptz default now()
+);
+
 alter table entries enable row level security;
+alter table config enable row level security;
 
 create policy "Allow all" on entries
-  for all using (true) with check (true);`}</pre>
+  for all using (true) with check (true);
+create policy "Allow all" on config
+  for all using (true) with check (true);
+
+-- Realtime
+alter publication supabase_realtime add table entries;
+alter publication supabase_realtime add table config;`}</pre>
         </details>
       </CardContent>
     </Card>

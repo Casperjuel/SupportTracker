@@ -30,12 +30,6 @@ export const DEFAULT_SHARED_DB = {
 }
 
 export const DEFAULT_FIELDS: FieldsConfig = {
-  kanal: {
-    label: 'Kanal',
-    type: 'toggle',
-    required: true,
-    options: ['Telefon', 'Intercom'],
-  },
   brugertype: {
     label: 'Brugertype',
     type: 'select',
@@ -87,6 +81,12 @@ export const DEFAULT_FIELDS: FieldsConfig = {
       'Ja – bedre kommunikation',
       'Nej',
     ],
+  },
+  kanal: {
+    label: 'Kanal',
+    type: 'toggle',
+    required: true,
+    options: ['Telefon', 'Intercom'],
   },
   fond: {
     label: 'Fond',

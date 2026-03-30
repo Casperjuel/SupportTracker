@@ -14,9 +14,18 @@ import { CheckCircle2, Zap } from 'lucide-react'
 
 export function RegisterView() {
   const { fields, addEntry, updateFields, data } = useStore()
-  const [formData, setFormData] = useState<Record<string, string>>({
-    dato: new Date().toISOString().split('T')[0],
-  })
+
+  function getDefaultFormData() {
+    const initial: Record<string, string> = { dato: new Date().toISOString().split('T')[0] }
+    for (const [key, field] of Object.entries(fields)) {
+      if (field.type === 'toggle' && field.options?.length) {
+        initial[key] = field.options[0]
+      }
+    }
+    return initial
+  }
+
+  const [formData, setFormData] = useState<Record<string, string>>(getDefaultFormData)
   const formRef = useRef<HTMLFormElement>(null)
   const firstSelectRef = useRef<HTMLButtonElement>(null)
 
@@ -57,7 +66,7 @@ export function RegisterView() {
       icon: <CheckCircle2 className="size-4" />,
     })
 
-    setFormData({ dato: new Date().toISOString().split('T')[0] })
+    setFormData(getDefaultFormData())
     setTimeout(() => firstSelectRef.current?.focus(), 100)
   }
 
@@ -247,7 +256,7 @@ export function RegisterView() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  setFormData({ dato: new Date().toISOString().split('T')[0] })
+                  setFormData(getDefaultFormData())
                 }}
               >
                 Ryd
