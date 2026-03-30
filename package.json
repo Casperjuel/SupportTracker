@@ -2,7 +2,7 @@
   "displayName": "SupportTracker",
   "name": "supporttracker",
   "description": "Lokal supporttracker til dit team",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "main": "./node_modules/.dev/main/index.mjs",
   "resources": "src/resources",
   "author": {
