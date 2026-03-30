@@ -40,6 +40,9 @@ export default {
     icon: `${resources}/build/icons/icon.icns`,
     category: 'public.app-category.utilities',
     target: ['zip', 'dmg', 'dir'],
+    notarize: {
+      teamId: process.env.APPLE_TEAM_ID || '',
+    },
   },
 
   linux: {
