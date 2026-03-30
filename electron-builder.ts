@@ -40,9 +40,7 @@ export default {
     icon: `${resources}/build/icons/icon.icns`,
     category: 'public.app-category.utilities',
     target: ['zip', 'dmg', 'dir'],
-    // Requires "Developer ID Application" cert for notarization
-    // Set to true once you have the cert installed
-    notarize: false,
+    notarize: true,
   },
 
   linux: {

@@ -1,3 +1,8 @@
+# certificates
+*.cer
+*.p12
+*.certSigningRequest
+
 # dependencies
 /node_modules
 /.pnp
