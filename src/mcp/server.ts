@@ -26,7 +26,10 @@ function writeStore(store: Record<string, any>) {
 
 function getData(): any[] {
   const store = readStore()
-  return Array.isArray(store.st_data_v1) ? store.st_data_v1 : []
+  // Check new key first, fall back to old key for migration
+  if (Array.isArray(store.st_data_v1) && store.st_data_v1.length > 0) return store.st_data_v1
+  if (Array.isArray(store.gc_support_v1) && store.gc_support_v1.length > 0) return store.gc_support_v1
+  return []
 }
 
 function setData(data: any[]) {
@@ -37,7 +40,8 @@ function setData(data: any[]) {
 
 function getFields(): Record<string, any> {
   const store = readStore()
-  const fields = store.st_fields_v1
+  // Check new key first, fall back to old
+  const fields = store.st_fields_v1 || store.gc_settings_v1
   if (fields && typeof fields === 'object' && !Array.isArray(fields) && Object.keys(fields).length > 0) {
     return fields
   }
