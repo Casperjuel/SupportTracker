@@ -10,6 +10,7 @@ import {
   Keyboard,
 } from 'lucide-react'
 import { Logo } from './logo'
+import { version as APP_VERSION } from '~/package.json'
 import { Button } from 'renderer/components/ui/button'
 import { useStore } from 'renderer/context/store'
 
@@ -140,6 +141,11 @@ export function AppSidebar({ activeView, onNavigate, ...props }: AppSidebarProps
                 <kbd className="rounded bg-muted px-1 text-[10px]">G</kbd>
                 {' vis/skjul'}
               </span>
+            </div>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <div className="px-2 py-1 text-[10px] text-muted-foreground/50 text-center">
+              v{APP_VERSION}
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
