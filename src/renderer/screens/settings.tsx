@@ -14,10 +14,10 @@ import { Badge } from 'renderer/components/ui/badge'
 import { Separator } from 'renderer/components/ui/separator'
 import { useStore } from 'renderer/context/store'
 import { toast } from 'sonner'
-import { Plus, X, RotateCcw, Download, Trash2, Sun, Moon, Monitor, ArrowUp, ArrowDown } from 'lucide-react'
+import { Plus, X, RotateCcw, Download, Trash2, Sun, Moon, Monitor, ArrowUp, ArrowDown, Copy, Check, Bot } from 'lucide-react'
 
 export function SettingsView() {
-  const { fields, updateFields, resetFields, data, clearAllData, theme, setTheme } = useStore()
+  const { fields, updateFields, resetFields, data, clearAllData, theme, setTheme, branding, setBranding } = useStore()
   const [newFieldKey, setNewFieldKey] = useState('')
   const [newFieldLabel, setNewFieldLabel] = useState('')
   const [newFieldType, setNewFieldType] = useState<'select' | 'text' | 'textarea'>('select')
@@ -74,8 +74,8 @@ export function SettingsView() {
         label,
         type: newFieldType,
         required: false,
-        options: (newFieldType === 'select' || newFieldType === 'toggle') ? [] : undefined,
-        placeholder: (newFieldType !== 'select' && newFieldType !== 'toggle') ? '' : undefined,
+        options: (newFieldType === 'select' || newFieldType === 'toggle' || newFieldType === 'combobox') ? [] : undefined,
+        placeholder: (newFieldType !== 'select' && newFieldType !== 'toggle' && newFieldType !== 'combobox') ? '' : undefined,
         full: newFieldType === 'textarea',
       },
     }
@@ -106,7 +106,7 @@ export function SettingsView() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `gc-backup-${new Date().toISOString().split('T')[0]}.json`
+    a.download = `supporttracker-backup-${new Date().toISOString().split('T')[0]}.json`
     a.click()
   }
 
@@ -127,7 +127,7 @@ export function SettingsView() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `gc-support-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = `supporttracker-${new Date().toISOString().split('T')[0]}.csv`
     a.click()
   }
 
@@ -163,6 +163,36 @@ export function SettingsView() {
                 {label}
               </Button>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Branding */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Branding</CardTitle>
+          <CardDescription>Tilpas navn og undertitel i sidebaren</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Organisationsnavn</Label>
+              <Input
+                value={branding.orgName}
+                onChange={(e) => setBranding({ ...branding, orgName: e.target.value })}
+                placeholder="Dit firmanavn"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Undertitel</Label>
+              <Input
+                value={branding.subtitle}
+                onChange={(e) => setBranding({ ...branding, subtitle: e.target.value })}
+                placeholder="Supporttracker"
+                className="h-8 text-sm"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -211,7 +241,7 @@ export function SettingsView() {
                     )}
                   </div>
 
-                  {(field.type === 'select' || field.type === 'toggle') && (
+                  {(field.type === 'select' || field.type === 'toggle' || field.type === 'combobox') && (
                     <div className="space-y-2">
                       <div className="flex flex-wrap gap-1.5">
                         {field.options?.map((opt, i) => (
@@ -231,7 +261,7 @@ export function SettingsView() {
                     </div>
                   )}
 
-                  {field.type !== 'select' && field.type !== 'toggle' && (
+                  {field.type !== 'select' && field.type !== 'toggle' && field.type !== 'combobox' && (
                     <p className="ml-5.5 text-xs text-muted-foreground">Fritekstfelt</p>
                   )}
                 </div>
@@ -283,6 +313,7 @@ export function SettingsView() {
                   <SelectContent>
                     <SelectItem value="select">Dropdown</SelectItem>
                     <SelectItem value="toggle">Toggle</SelectItem>
+                    <SelectItem value="combobox">Typeahead</SelectItem>
                     <SelectItem value="text">Tekst</SelectItem>
                     <SelectItem value="textarea">Stort felt</SelectItem>
                   </SelectContent>
@@ -295,6 +326,9 @@ export function SettingsView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* MCP Integration */}
+      <McpSection />
 
       {/* Data management */}
       <Card className="border-destructive/20">
@@ -341,6 +375,103 @@ export function SettingsView() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+
+  function handleCopy() {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <Button variant="ghost" size="icon" className="size-6 shrink-0" onClick={handleCopy}>
+      {copied ? <Check className="size-3 text-primary" /> : <Copy className="size-3" />}
+    </Button>
+  )
+}
+
+const claudeDesktopConfig = `{
+  "mcpServers": {
+    "supporttracker": {
+      "command": "npx",
+      "args": ["tsx", "<path-to>/SupportTracker/src/mcp/server.ts"]
+    }
+  }
+}`
+
+const claudeCodeConfig = `{
+  "mcpServers": {
+    "supporttracker": {
+      "command": "npx",
+      "args": ["tsx", "./src/mcp/server.ts"],
+      "cwd": "<path-to>/SupportTracker"
+    }
+  }
+}`
+
+function McpSection() {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <Bot className="size-4 text-primary" />
+          <CardTitle className="text-sm">AI Integration (MCP)</CardTitle>
+        </div>
+        <CardDescription>
+          Forbind med Claude Desktop eller Claude Code for at læse, oprette og analysere henvendelser via AI.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <Label className="text-xs font-medium">Claude Desktop</Label>
+            <CopyButton text={claudeDesktopConfig} />
+          </div>
+          <p className="text-[11px] text-muted-foreground mb-2">
+            Tilføj til <code className="bg-muted px-1 py-0.5 rounded text-[10px]">~/Library/Application Support/Claude/claude_desktop_config.json</code>
+          </p>
+          <pre className="bg-muted rounded-lg p-3 text-[11px] leading-relaxed overflow-x-auto select-text">{claudeDesktopConfig}</pre>
+        </div>
+
+        <Separator />
+
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <Label className="text-xs font-medium">Claude Code</Label>
+            <CopyButton text={claudeCodeConfig} />
+          </div>
+          <p className="text-[11px] text-muted-foreground mb-2">
+            Tilføj til <code className="bg-muted px-1 py-0.5 rounded text-[10px]">.mcp.json</code> i projekt-roden
+          </p>
+          <pre className="bg-muted rounded-lg p-3 text-[11px] leading-relaxed overflow-x-auto select-text">{claudeCodeConfig}</pre>
+        </div>
+
+        <Separator />
+
+        <div>
+          <Label className="text-xs font-medium mb-2 block">Tilgængelige værktøjer</Label>
+          <div className="grid grid-cols-2 gap-1.5">
+            {[
+              ['list_entries', 'Søg og filtrér henvendelser'],
+              ['create_entry', 'Opret ny henvendelse'],
+              ['delete_entry', 'Slet en henvendelse'],
+              ['get_insights', 'Hent analyse og statistik'],
+              ['get_fields', 'Se feltkonfiguration'],
+              ['add_field_option', 'Tilføj ny valgmulighed'],
+            ].map(([tool, desc]) => (
+              <div key={tool} className="flex items-start gap-2 p-2 rounded-md bg-muted/50 text-xs">
+                <code className="text-[10px] bg-background px-1 py-0.5 rounded font-mono shrink-0">{tool}</code>
+                <span className="text-muted-foreground">{desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

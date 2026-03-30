@@ -19,7 +19,7 @@ export interface WindowCreationByIPC {
 
 export interface FieldConfig {
   label: string
-  type: 'select' | 'text' | 'textarea' | 'toggle'
+  type: 'select' | 'text' | 'textarea' | 'toggle' | 'combobox'
   required: boolean
   options?: string[]
   placeholder?: string
@@ -37,3 +37,8 @@ export interface SupportEntry {
 }
 
 export type ThemeMode = 'light' | 'dark' | 'auto'
+
+export interface BrandingConfig {
+  orgName: string
+  subtitle: string
+}

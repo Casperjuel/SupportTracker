@@ -7,6 +7,7 @@ import { Label } from 'renderer/components/ui/label'
 import { Badge } from 'renderer/components/ui/badge'
 import { ToggleGroup, ToggleGroupItem } from 'renderer/components/ui/toggle-group'
 import { CreatableSelect } from 'renderer/components/creatable-select'
+import { ComboboxField } from 'renderer/components/combobox-field'
 import { useStore } from 'renderer/context/store'
 import { toast } from 'sonner'
 import { CheckCircle2, Zap } from 'lucide-react'
@@ -78,7 +79,8 @@ export function RegisterView() {
   const fieldEntries = Object.entries(fields)
   const toggleFields = fieldEntries.filter(([, f]) => f.type === 'toggle')
   const selectFields = fieldEntries.filter(([, f]) => f.type === 'select')
-  const otherFields = fieldEntries.filter(([, f]) => f.type !== 'select' && f.type !== 'toggle')
+  const otherFields = fieldEntries.filter(([, f]) => f.type !== 'select' && f.type !== 'toggle' && f.type !== 'combobox')
+  const comboboxFields = fieldEntries.filter(([, f]) => f.type === 'combobox')
   let isFirstSelect = true
 
   return (
@@ -166,6 +168,30 @@ export function RegisterView() {
                 )
               })}
             </div>
+
+            {/* Combobox fields (typeahead) */}
+            {comboboxFields.length > 0 && (
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                {comboboxFields.map(([key, field]) => (
+                  <div key={key} className="space-y-1.5">
+                    <Label className="text-xs">
+                      {field.label}
+                      {!field.required && (
+                        <span className="text-muted-foreground font-normal ml-1">(valgfrit)</span>
+                      )}
+                    </Label>
+                    <ComboboxField
+                      value={formData[key] || ''}
+                      options={field.options || []}
+                      placeholder={field.placeholder || `Søg ${field.label.toLowerCase()}...`}
+                      searchPlaceholder={`Søg ${field.label.toLowerCase()}...`}
+                      onValueChange={(val) => updateField(key, val)}
+                      onOptionCreated={(val) => handleOptionCreated(key, val)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Text/textarea fields */}
             {otherFields.length > 0 && (

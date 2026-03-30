@@ -11,10 +11,16 @@ export const PLATFORM = {
 }
 
 export const STORE_KEYS = {
-  DATA: 'gc_support_v1',
-  SETTINGS: 'gc_settings_v1',
-  THEME: 'gc_theme',
+  DATA: 'st_data_v1',
+  SETTINGS: 'st_fields_v1',
+  THEME: 'st_theme',
+  BRANDING: 'st_branding',
 } as const
+
+export const DEFAULT_BRANDING = {
+  orgName: 'SupportTracker',
+  subtitle: 'Supporttracker',
+}
 
 export const DEFAULT_FIELDS: FieldsConfig = {
   kanal: {
@@ -77,9 +83,17 @@ export const DEFAULT_FIELDS: FieldsConfig = {
   },
   fond: {
     label: 'Fond',
-    type: 'text',
+    type: 'combobox',
     required: false,
-    placeholder: 'Fondens navn, hvis relevant',
+    options: [
+      'Novo Nordisk Fonden',
+      'Villum Fonden',
+      'Carlsbergfondet',
+      'Realdania',
+      'Augustinus Fonden',
+      'Velux Fonden',
+    ],
+    placeholder: 'Søg eller tilføj fond...',
   },
   note: {
     label: 'Beskrivelse',

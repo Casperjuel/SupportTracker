@@ -1,6 +1,6 @@
 import {
   LayoutDashboard,
-  PlusCircle,
+  Plus,
   List,
   Lightbulb,
   Settings,
@@ -10,6 +10,7 @@ import {
   Keyboard,
 } from 'lucide-react'
 import { Logo } from './logo'
+import { Button } from 'renderer/components/ui/button'
 import { useStore } from 'renderer/context/store'
 
 import {
@@ -34,13 +35,12 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 const mainNav = [
   { id: 'dashboard', label: 'Oversigt', icon: LayoutDashboard },
-  { id: 'registrer', label: 'Ny henvendelse', icon: PlusCircle },
   { id: 'log', label: 'Alle henvendelser', icon: List },
   { id: 'indsigt', label: 'Indsigter', icon: Lightbulb },
 ]
 
 export function AppSidebar({ activeView, onNavigate, ...props }: AppSidebarProps) {
-  const { data, theme, setTheme } = useStore()
+  const { data, theme, setTheme, branding } = useStore()
 
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor
 
@@ -60,9 +60,9 @@ export function AppSidebar({ activeView, onNavigate, ...props }: AppSidebarProps
                   <Logo />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Grant Compass</span>
+                  <span className="truncate font-semibold">{branding.orgName}</span>
                   <span className="truncate text-xs text-muted-foreground">
-                    Supporttracker
+                    {branding.subtitle}
                   </span>
                 </div>
               </button>
@@ -94,6 +94,18 @@ export function AppSidebar({ activeView, onNavigate, ...props }: AppSidebarProps
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Prominent "Ny henvendelse" button */}
+        <div className="px-3 mt-2">
+          <Button
+            onClick={() => onNavigate('registrer')}
+            className="w-full gap-2 justify-start"
+            size="sm"
+          >
+            <Plus className="size-4" />
+            Ny henvendelse
+          </Button>
+        </div>
       </SidebarContent>
 
       <SidebarFooter>

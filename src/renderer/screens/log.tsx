@@ -24,7 +24,7 @@ export function LogView() {
   const { data, fields, deleteEntry } = useStore()
   const [filters, setFilters] = useState<Record<string, string>>({})
 
-  const selectFields = Object.entries(fields).filter(([, f]) => f.type === 'select' || f.type === 'toggle')
+  const selectFields = Object.entries(fields).filter(([, f]) => f.type === 'select' || f.type === 'toggle' || f.type === 'combobox')
 
   let filtered = [...data]
   for (const [key, val] of Object.entries(filters)) {
@@ -52,7 +52,7 @@ export function LogView() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `gc-support-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = `supporttracker-${new Date().toISOString().split('T')[0]}.csv`
     a.click()
   }
 

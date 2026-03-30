@@ -50,7 +50,7 @@ export function createTray(mainWindow: BrowserWindow) {
     },
   ])
 
-  tray.setToolTip('Grant Compass – Supporttracker')
+  tray.setToolTip('SupportTracker')
   tray.setContextMenu(contextMenu)
 
   tray.on('click', () => {

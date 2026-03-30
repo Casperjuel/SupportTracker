@@ -36,6 +36,8 @@ import {
   Users,
   Flame,
   Zap,
+  BarChart3,
+  Target,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
@@ -636,7 +638,7 @@ export function InsightsView() {
               if (eskData.length >= 3) {
                 const topCat = countBy(eskData, 'kategori')[0]
                 actions.push({
-                  action: `Lav intern runbook til "${topCat[0]}"`,
+                  action: `Lav intern guide til "${topCat[0]}"`,
                   reason: `${eskData.length} eskaleringer — kan frontline løse det?`,
                   impact: eskData.length * 8,
                   icon: <ArrowUpRight className="size-3.5 text-chart-5" />,

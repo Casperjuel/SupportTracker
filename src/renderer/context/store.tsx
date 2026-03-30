@@ -6,8 +6,8 @@ import {
   useCallback,
   type ReactNode,
 } from 'react'
-import type { SupportEntry, FieldsConfig, ThemeMode } from 'shared/types'
-import { DEFAULT_FIELDS, STORE_KEYS } from 'shared/constants'
+import type { SupportEntry, FieldsConfig, ThemeMode, BrandingConfig } from 'shared/types'
+import { DEFAULT_FIELDS, DEFAULT_BRANDING, STORE_KEYS } from 'shared/constants'
 
 const { App } = window
 
@@ -16,11 +16,13 @@ interface StoreContextValue {
   fields: FieldsConfig
   theme: ThemeMode
   resolvedTheme: 'light' | 'dark'
+  branding: BrandingConfig
   addEntry: (entry: Omit<SupportEntry, 'id'>) => Promise<void>
   deleteEntry: (id: number) => Promise<void>
   updateFields: (fields: FieldsConfig) => Promise<void>
   resetFields: () => Promise<void>
   setTheme: (mode: ThemeMode) => Promise<void>
+  setBranding: (branding: BrandingConfig) => Promise<void>
   clearAllData: () => Promise<void>
 }
 
@@ -31,15 +33,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [fields, setFields] = useState<FieldsConfig>(DEFAULT_FIELDS)
   const [theme, setThemeState] = useState<ThemeMode>('auto')
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light')
+  const [branding, setBrandingState] = useState<BrandingConfig>(DEFAULT_BRANDING)
 
   useEffect(() => {
     async function load() {
       const storedData = await App.getData(STORE_KEYS.DATA)
       if (Array.isArray(storedData)) setData(storedData)
 
+      // Migration: check old key too
+      if (!Array.isArray(storedData) || storedData.length === 0) {
+        const oldData = await App.getData('gc_support_v1')
+        if (Array.isArray(oldData) && oldData.length > 0) {
+          setData(oldData)
+          await App.setData(STORE_KEYS.DATA, oldData)
+        }
+      }
+
       const storedFields = await App.getData(STORE_KEYS.SETTINGS)
       if (storedFields && typeof storedFields === 'object' && !Array.isArray(storedFields) && Object.keys(storedFields).length > 0) {
         setFields(storedFields as FieldsConfig)
+      } else {
+        const oldFields = await App.getData('gc_settings_v1')
+        if (oldFields && typeof oldFields === 'object' && !Array.isArray(oldFields) && Object.keys(oldFields).length > 0) {
+          setFields(oldFields as FieldsConfig)
+          await App.setData(STORE_KEYS.SETTINGS, oldFields)
+        }
       }
 
       const storedTheme = await App.getData(STORE_KEYS.THEME) as ThemeMode
@@ -49,11 +67,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       } else {
         applyTheme('auto')
       }
+
+      const storedBranding = await App.getData(STORE_KEYS.BRANDING) as BrandingConfig
+      if (storedBranding && storedBranding.orgName) {
+        setBrandingState(storedBranding)
+      }
     }
     load()
 
     App.onNativeThemeChanged((nativeTheme: string) => {
-      // Only update if in auto mode
       const currentTheme = document.documentElement.dataset.themeMode
       if (currentTheme === 'auto') {
         const resolved = nativeTheme === 'dark' ? 'dark' : 'light'
@@ -110,6 +132,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     applyTheme(mode)
   }, [])
 
+  const setBranding = useCallback(async (b: BrandingConfig) => {
+    setBrandingState(b)
+    await App.setData(STORE_KEYS.BRANDING, b)
+  }, [])
+
   const clearAllData = useCallback(async () => {
     setData([])
     await App.setData(STORE_KEYS.DATA, [])
@@ -122,11 +149,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         fields,
         theme,
         resolvedTheme,
+        branding,
         addEntry,
         deleteEntry,
         updateFields,
         resetFields,
         setTheme,
+        setBranding,
         clearAllData,
       }}
     >

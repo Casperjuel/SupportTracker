@@ -11,7 +11,7 @@ import { waitFor } from 'shared/utils'
 import Store from 'electron-store'
 import { initAutoUpdater } from './updater'
 
-const store = new Store({ name: 'gc_support_data' })
+const store = new Store({ name: 'supporttracker_data' })
 
 // IPC handlers for persistent storage
 ipcMain.handle('store-get', (_, key: string) => {

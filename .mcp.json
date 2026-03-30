@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "supporttracker": {
+      "command": "npx",
+      "args": ["tsx", "./src/mcp/server.ts"],
+      "cwd": "/Users/casperjuel/lol/grantc-app"
+    }
+  }
+}
