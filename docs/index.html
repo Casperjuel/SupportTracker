@@ -110,14 +110,31 @@
 
     <a href="https://github.com/Casperjuel/SupportTracker/releases/latest" class="download-btn" id="download-btn">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Download til macOS
+      <span id="btn-text">Download til macOS</span>
     </a>
-    <p class="meta">
+    <p class="meta" id="version-text">
       Gratis &middot; macOS &middot; <a href="https://github.com/Casperjuel/SupportTracker/releases/latest">Alle versioner</a> &middot; <a href="https://github.com/Casperjuel/SupportTracker">GitHub</a>
     </p>
     <p class="meta" style="margin-top: 8px; font-size: 11px;">
       Ved første åbning: højreklik appen → Åbn
     </p>
+
+    <script>
+      fetch('https://api.github.com/repos/Casperjuel/SupportTracker/releases/latest')
+        .then(r => r.json())
+        .then(release => {
+          const dmg = release.assets?.find(a => a.name.endsWith('.dmg'));
+          if (dmg) {
+            document.getElementById('download-btn').href = dmg.browser_download_url;
+            document.getElementById('btn-text').textContent = `Download ${release.tag_name} til macOS`;
+          }
+          if (release.tag_name) {
+            document.getElementById('version-text').innerHTML =
+              `${release.tag_name} &middot; Gratis &middot; macOS &middot; <a href="https://github.com/Casperjuel/SupportTracker/releases/latest">Alle versioner</a> &middot; <a href="https://github.com/Casperjuel/SupportTracker">GitHub</a>`;
+          }
+        })
+        .catch(() => {});
+    </script>
 
     <div class="features">
       <div class="feature">
