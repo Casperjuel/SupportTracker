@@ -40,6 +40,7 @@ export default {
     icon: `${resources}/build/icons/icon.icns`,
     category: 'public.app-category.utilities',
     target: ['zip', 'dmg', 'dir'],
+    identity: 'Developer ID Application',
     notarize: true,
   },
 
