@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from 'renderer/components/ui/card'
 import { Button } from 'renderer/components/ui/button'
 import { Input } from 'renderer/components/ui/input'
@@ -49,6 +49,22 @@ export function SettingsView() {
     opts.splice(idx, 1)
     const updated = { ...fields, [key]: { ...field, options: opts } }
     await updateFields(updated)
+  }
+
+  async function renameOption(key: string, idx: number, newName: string) {
+    const field = fields[key]
+    if (!field || !field.options) return
+    const trimmed = newName.trim()
+    if (!trimmed || field.options[idx] === trimmed) return
+    if (field.options.includes(trimmed)) {
+      toast.error('Findes allerede')
+      return
+    }
+    const opts = [...field.options]
+    opts[idx] = trimmed
+    const updated = { ...fields, [key]: { ...field, options: opts } }
+    await updateFields(updated)
+    toast.success('Omdøbt')
   }
 
   async function removeField(key: string) {
@@ -254,16 +270,12 @@ export function SettingsView() {
                     <div className="space-y-2">
                       <div className="flex flex-wrap gap-1.5">
                         {field.options?.map((opt, i) => (
-                          <Badge key={opt} variant="secondary" className="gap-1 pr-1 text-xs">
-                            {opt}
-                            <button
-                              type="button"
-                              onClick={() => removeOption(key, i)}
-                              className="ml-0.5 rounded-full hover:bg-destructive/20 p-0.5"
-                            >
-                              <X className="size-2.5" />
-                            </button>
-                          </Badge>
+                          <EditableBadge
+                            key={`${key}-${i}`}
+                            value={opt}
+                            onRename={(newName) => renameOption(key, i, newName)}
+                            onRemove={() => removeOption(key, i)}
+                          />
                         ))}
                       </div>
                       <OptionAdder onAdd={(val) => addOption(key, val)} />
@@ -669,6 +681,70 @@ function McpSection() {
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function EditableBadge({
+  value,
+  onRename,
+  onRemove,
+}: {
+  value: string
+  onRename: (newName: string) => void
+  onRemove: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [editValue, setEditValue] = useState(value)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }
+  }, [editing])
+
+  function commit() {
+    if (editValue.trim() && editValue.trim() !== value) {
+      onRename(editValue.trim())
+    }
+    setEditing(false)
+    setEditValue(value)
+  }
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit()
+          if (e.key === 'Escape') { setEditing(false); setEditValue(value) }
+        }}
+        className="h-6 px-2 text-xs border rounded-md w-40 bg-background"
+      />
+    )
+  }
+
+  return (
+    <Badge variant="secondary" className="gap-1 pr-1 text-xs group">
+      <button
+        type="button"
+        onClick={() => { setEditValue(value); setEditing(true) }}
+        className="cursor-text hover:underline"
+      >
+        {value}
+      </button>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="ml-0.5 rounded-full hover:bg-destructive/20 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <X className="size-2.5" />
+      </button>
+    </Badge>
   )
 }
 
