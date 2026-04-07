@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from 'renderer/components/ui/select'
 import { useStore } from 'renderer/context/store'
+import { formatDato } from 'renderer/lib/format'
 import { Download, Trash2, ListX } from 'lucide-react'
 
 export function LogView() {
@@ -125,7 +126,7 @@ export function LogView() {
                 {filtered.map((d) => (
                   <TableRow key={d.id}>
                     <TableCell className="text-muted-foreground whitespace-nowrap text-xs">
-                      {d.dato}
+                      {formatDato(d.dato as string)}
                     </TableCell>
                     {Object.entries(fields).map(([key]) => {
                       const val = String(d[key] || '-')

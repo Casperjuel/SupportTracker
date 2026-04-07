@@ -136,6 +136,7 @@ export function subscribeToEntries(
   config: SharedDbConfig,
   onInsert: (entry: SupportEntry) => void,
   onDelete: (id: number) => void,
+  onUpdate: (entry: SupportEntry) => void,
 ): (() => void) | null {
   const c = getClient(config)
   if (!c) return null
@@ -147,6 +148,13 @@ export function subscribeToEntries(
       { event: 'INSERT', schema: 'public', table: 'entries' },
       (payload) => {
         onInsert(payload.new as SupportEntry)
+      }
+    )
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'entries' },
+      (payload) => {
+        onUpdate(payload.new as SupportEntry)
       }
     )
     .on(

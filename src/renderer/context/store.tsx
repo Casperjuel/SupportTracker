@@ -94,16 +94,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (storedSharedDb.enabled && storedSharedDb.url && storedSharedDb.key) {
           try {
             const remoteData = await fetchRemoteEntries(storedSharedDb)
-            if (remoteData.length > 0) {
-              // Merge: remote wins for same ID, keep local-only entries
-              const remoteIds = new Set(remoteData.map((d) => d.id))
-              const localOnly = localData.filter((d) => !remoteIds.has(d.id))
-              const merged = [...remoteData, ...localOnly].sort(
-                (a, b) => (b.dato as string).localeCompare(a.dato as string)
-              )
-              setData(merged)
-              await App.setData(STORE_KEYS.DATA, merged)
-            }
+            // Remote is source of truth when shared DB is enabled
+            const sorted = [...remoteData].sort(
+              (a, b) => (b.dato as string).localeCompare(a.dato as string)
+            )
+            setData(sorted)
+            await App.setData(STORE_KEYS.DATA, sorted)
 
             // Sync fields from remote (remote wins)
             const remoteFields = await fetchRemoteFields(storedSharedDb)
@@ -131,6 +127,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             (deletedId) => {
               setData((prev) => {
                 const next = prev.filter((d) => d.id !== deletedId)
+                App.setData(STORE_KEYS.DATA, next)
+                return next
+              })
+            },
+            (updatedEntry) => {
+              setData((prev) => {
+                const next = prev.map((d) => d.id === updatedEntry.id ? updatedEntry : d)
                 App.setData(STORE_KEYS.DATA, next)
                 return next
               })
@@ -229,17 +232,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const refreshFromRemote = useCallback(async () => {
     if (!sharedDb.enabled) return
     const remoteData = await fetchRemoteEntries(sharedDb)
-    if (remoteData.length > 0) {
-      setData((prev) => {
-        const remoteIds = new Set(remoteData.map((d) => d.id))
-        const localOnly = prev.filter((d) => !remoteIds.has(d.id))
-        const merged = [...remoteData, ...localOnly].sort(
-          (a, b) => (b.dato as string).localeCompare(a.dato as string)
-        )
-        App.setData(STORE_KEYS.DATA, merged)
-        return merged
-      })
-    }
+    const sorted = [...remoteData].sort(
+      (a, b) => (b.dato as string).localeCompare(a.dato as string)
+    )
+    setData(sorted)
+    await App.setData(STORE_KEYS.DATA, sorted)
   }, [sharedDb])
 
   const clearAllData = useCallback(async () => {
